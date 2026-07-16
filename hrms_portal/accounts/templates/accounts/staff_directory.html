@@ -1,0 +1,60 @@
+{% extends 'layouts/base.html' %}
+
+{% block title %}Staff Directory Registry{% endblock %}
+
+{% block sidebar_links %}
+<a href="{% url 'hr_dashboard' %}" class="flex items-center gap-3 px-3 py-2 text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg transition-all">
+    <i class="fa-solid fa-chart-pie"></i><span>Analytics Console</span>
+</a>
+<a href="{% url 'staff_directory' %}" class="flex items-center gap-3 px-3 py-2 bg-slate-800 text-white rounded-lg font-medium">
+    <i class="fa-solid fa-users text-blue-400"></i><span>Staff Directory</span>
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div>
+        <h1 class="text-3xl font-bold tracking-tight text-slate-900">Staff Directory</h1>
+        <p class="text-slate-500 mt-1">Audit profile registries, assign professional attributes, and check salaries.</p>
+    </div>
+    
+    <form method="get" class="flex items-center gap-2 max-w-sm w-full">
+        <input type="text" name="search" value="{{ search_query }}" placeholder="Search ID, name or role..." class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm bg-white">
+        <button type="submit" class="px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition-all">Find</button>
+    </form>
+</div>
+
+<div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+    <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+            <thead>
+                <tr class="bg-slate-50/75 border-b border-slate-100 text-slate-400 text-xs uppercase font-medium">
+                    <th class="py-3 px-6">Employee ID</th>
+                    <th class="py-3 px-6">User Context</th>
+                    <th class="py-3 px-6">Department</th>
+                    <th class="py-3 px-6">Designation</th>
+                    <th class="py-3 px-6">Monthly Payroll</th>
+                </tr>
+            </thead>
+            <tbody class="text-sm text-slate-700 divide-y divide-slate-50">
+                {% for staff in staff_members %}
+                <tr class="hover:bg-slate-50/50 transition-colors">
+                    <td class="py-4 px-6 font-mono font-semibold text-slate-900">{{ staff.employee_id }}</td>
+                    <td class="py-4 px-6">
+                        <div class="font-medium text-slate-950">{{ staff.user.username }}</div>
+                        <div class="text-xs text-slate-400">{{ staff.user.email }}</div>
+                    </td>
+                    <td class="py-4 px-6"><span class="px-2 py-1 text-xs font-medium bg-slate-100 text-slate-700 rounded">{{ staff.department.name|default:"General" }}</span></td>
+                    <td class="py-4 px-6 text-slate-600">{{ staff.designation }}</td>
+                    <td class="py-4 px-6 font-medium text-emerald-600">₹{{ staff.salary }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="py-12 text-center text-slate-400">No active staff personnel profile matches found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -17,7 +17,13 @@
             </div>
             
             <nav class="flex-1 space-y-2">
-                {% block sidebar_links %}
+               {% block sidebar_links %}
+                    <a href="{% url 'hr_dashboard' %}" class="flex items-center gap-3 px-3 py-2 bg-slate-800 text-white rounded-lg font-medium">
+                        <i class="fa-solid fa-chart-pie text-blue-400"></i><span>Analytics Console</span>
+                    </a>
+                    <a href="{% url 'staff_directory' %}" class="flex items-center gap-3 px-3 py-2 text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg transition-all">
+                        <i class="fa-solid fa-users"></i><span>Staff Directory</span>
+                    </a>
                 {% endblock %}
             </nav>
 

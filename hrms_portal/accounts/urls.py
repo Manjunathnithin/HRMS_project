@@ -11,4 +11,5 @@ urlpatterns = [
     # HR Quick Action Approval Mappings
     path('dashboard/hr/leave/approve/<int:leave_id>/', views.approve_leave_action, name='approve_leave_action'),
     path('dashboard/hr/leave/reject/<int:leave_id>/', views.reject_leave_action, name='reject_leave_action'),
+    path('dashboard/hr/staff-directory/',views.staff_directory, name='staff_directory'),
 ]
