@@ -81,8 +81,8 @@ def verify_otp(request):
             auth_login(request, user)
             
             # Secure clean-up of temporary setup keys from backend state mapping records
-            del request.session['pre_auth_user_id']
-            del request.session['login_otp_token']
+            request.session.pop('pre_auth_user_id', None)
+            request.session.pop('login_otp_token', None)
             
             messages.success(request, f"Welcome back, {user.username}! Access authorization approved.")
             

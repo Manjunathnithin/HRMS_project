@@ -124,9 +124,27 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-AUTH_USER_MODEL='accounts.User'
+# Custom Authentication System Overrides
+AUTH_USER_MODEL = 'accounts.User'
 
 LOGIN_REDIRECT_URL = 'dashboard_home'
 LOGOUT_REDIRECT_URL = 'login'
 LOGIN_URL = 'login'
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+# Media File Asset Operations (For Custom Avatar Uploads)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
+# ==============================================================================
+# LIVE NETWORK SMTP PRODUCTION EMAIL CONFIGURATION (GMAIL SETUP)
+# ==============================================================================
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+
+# ⚠️ CRITICAL STEP: Replace these placeholders with your actual execution credentials
+EMAIL_HOST_USER = 'manjunathnithin579@gmail.com'        # <-- Enter your real Gmail address
+EMAIL_HOST_PASSWORD = 'vrlc vwqe eglz obvf'   # <-- Enter your 16-character Google App Password
+
+DEFAULT_FROM_EMAIL = f"HRMS Portal Security <{EMAIL_HOST_USER}>"
