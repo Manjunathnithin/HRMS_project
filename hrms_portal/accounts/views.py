@@ -4,11 +4,96 @@ from django.contrib.auth.decorators import login_required
 from django.db import models
 from django.db.models import Sum, Count
 from django.contrib import messages
+from django.core.mail import send_mail 
+import random
+from django.contrib.auth import authenticate, login as auth_login
+from django.core.mail import send_mail
+from django.contrib import messages
+from django.shortcuts import render, redirect
+from django.views.decorators.csrf import csrf_protect
 
 from employees.models import EmployeeProfile, Department
 from leaves.models import LeaveRequest, LeaveBalance
 from leaves.forms import LeaveApplicationForm
 from .models import User, EmployeeProfile, Department
+from .forms import AddEmployeeForm
+
+@csrf_protect
+def login_view(request):
+    if request.method == 'POST':
+        # Standard username/password collection
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        
+        user = authenticate(request, username=username, password=password)
+        
+        if user is not None:
+            # Generate a secure 6-digit OTP code token
+            otp_code = str(random.randint(100000, 999999))
+            
+            # Temporary stage user credentials inside the safe session storage layer
+            request.session['pre_auth_user_id'] = user.id
+            request.session['login_otp_token'] = otp_code
+            
+            recipient_email = user.email
+            if not recipient_email:
+                recipient_email = 'employee-registration-pending@company.com'
+            # Send the OTP via the email service
+            send_mail(
+                subject="HRMS Secure Login Access Token Alert",
+                message=(
+                    f"Hello {user.username},\n\n"
+                    f"A login request was made for your HRMS profile account.\n"
+                    f"Your Security Verification OTP is: {otp_code}\n\n"
+                    f"This verification parameter code remains active for this login window session context."
+                ),
+                from_email='security@hrms-portal.com',
+                recipient_list=[user.email if user.email else 'employee@company.com'],
+                fail_silently=False
+            )
+            
+            messages.info(request, "A security verification OTP code has been dispatched to your email address!")
+            return redirect('verify_otp')
+        else:
+            messages.error(request, "Invalid corporate login credentials. Please review entries.")
+            
+    return render(request, 'accounts/login.html')
+
+@csrf_protect
+def verify_otp(request):
+    # Route guard safety check: block access if user didn't successfully finish stage-1 form
+    user_id = request.session.get('pre_auth_user_id')
+    saved_otp = request.session.get('login_otp_token')
+    
+    if not user_id or not saved_otp:
+        messages.error(request, "Unauthorized sequence vector access attempt blocked.")
+        return redirect('login')
+        
+    if request.method == 'POST':
+        entered_otp = request.POST.get('otp_token')
+        
+        if entered_otp == saved_otp:
+            # Lookup the structural record matching the user context identity
+            from .models import User
+            user = User.objects.get(id=user_id)
+            
+            # Formally authenticate and sign them into the active browser cookie thread
+            auth_login(request, user)
+            
+            # Secure clean-up of temporary setup keys from backend state mapping records
+            del request.session['pre_auth_user_id']
+            del request.session['login_otp_token']
+            
+            messages.success(request, f"Welcome back, {user.username}! Access authorization approved.")
+            
+            # Direct dynamically according to role settings
+            if user.is_hr:
+                return redirect('hr_dashboard')
+            return redirect('employee_dashboard')
+        else:
+            messages.error(request, "Incorrect OTP entry token code submitted. Please review values.")
+            
+    return render(request, 'accounts/verify_otp.html')
 
 @login_required
 def dashboard_router(request):
@@ -89,6 +174,20 @@ def apply_leave(request):
             leave_instance.user = request.user
             leave_instance.save()
 
+            emp_id = getattr(request.user.profile, 'employee_id', 'N/A')
+
+            send_mail(
+                subject=f"New Leave Application Alert: {request.user.username} ({emp_id})",
+                message=(
+                    f"Employee {request.user.username}\n"
+                    f"Employee ID: {emp_id}\n"
+                    f"leave Type: {leave_instance.leave_type}\n\n"
+                    f"Details: {request.user.username} has submitted a new leave request for review."
+                ),
+                from_email='system@hrms-portal.com',
+                recipient_list=['hr-admin@company.com'],
+                fail_silently=True
+            )
             messages.success(request, "Leave request submitted successfully.")
             return redirect('employee_dashboard')
     else:
@@ -144,6 +243,27 @@ def staff_directory(request):
         return redirect('dashboard_home')
         
     search_query = request.GET.get('search', '')
+
+    # Process form action if HR attempts to create a new personnel profile record
+    if request.method == 'POST':
+        form = AddEmployeeForm(request.POST)
+        if form.is_valid():
+            # 1. Spawn base credentials user object entry first
+            username = form.cleaned_data['username']
+            email = form.cleaned_data['email']
+            password = form.cleaned_data['password']
+            
+            new_user = User.objects.create_user(username=username, email=email, password=password, is_employee=True)
+            
+            # 2. Map structural profile fields to it
+            profile = form.save(commit=False)
+            profile.user = new_user
+            profile.save()
+            
+            messages.success(request, f"Successfully provisioned corporate profile registry for {username}!")
+            return redirect('staff_directory')
+    else:
+        form = AddEmployeeForm()
     
     # Filter staff records dynamically if a search parameters query string is caught
     if search_query:
@@ -157,7 +277,8 @@ def staff_directory(request):
         
     return render(request, 'accounts/staff_directory.html', {
         'staff_members': staff_members,
-        'search_query': search_query
+        'search_query': search_query,
+        'form': form
     })
 
 @login_required

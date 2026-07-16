@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Secure Identity Management Sign-In | HRMS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body class="bg-slate-900 flex min-h-full flex-col justify-center px-6 py-12 lg:px-8 items-center h-screen">
+    <div class="sm:mx-auto sm:w-full sm:max-w-sm bg-slate-800 p-8 rounded-2xl border border-slate-700/50 shadow-xl">
+        <div class="text-center mb-8">
+            <div
+                class="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-400 mx-auto text-xl border border-blue-500/20 mb-3">
+                <i class="fa-solid fa-people-roof"></i>
+            </div>
+            <h2 class="text-xl font-bold text-white tracking-tight">HRMS Corporate Portal</h2>
+            <p class="text-slate-400 text-xs mt-1">Sign in with your company credentials to access your terminal.</p>
+        </div>
+
+        {% if messages %}
+        {% for message in messages %}
+        <div class="p-3 mb-4 rounded-lg text-xs font-medium 
+                    {% if message.tags == 'error' %} bg-red-500/10 text-red-400 border border-red-500/20
+                    {% else %} bg-blue-500/10 text-blue-400 border border-blue-500/20 {% endif %}">
+            {{ message }}
+        </div>
+        {% endfor %}
+        {% endif %}
+
+        <form class="space-y-4" method="POST" action="{% url 'login' %}">
+            {% csrf_token %}
+            <div>
+                <label for="username"
+                    class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Corporate
+                    Username</label>
+                <div class="relative">
+                    <i class="fa-solid fa-user absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm"></i>
+                    <input id="username" name="username" type="text" required placeholder="username"
+                        class="w-full pl-9 pr-4 py-2 bg-slate-900/50 border border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-white placeholder-slate-600 text-sm focus:border-transparent">
+                </div>
+            </div>
+
+            <div>
+                <label for="password"
+                    class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Security
+                    Password</label>
+                <div class="relative">
+                    <i class="fa-solid fa-lock absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm"></i>
+                    <input id="password" name="password" type="password" required placeholder="••••••••"
+                        class="w-full pl-9 pr-4 py-2 bg-slate-900/50 border border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-white placeholder-slate-600 text-sm focus:border-transparent">
+                </div>
+            </div>
+
+            <button type="submit"
+                class="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-all shadow-md text-sm flex items-center justify-center gap-2 mt-4">
+                <span>Request Verification Token</span> <i class="fa-solid fa-arrow-right text-xs"></i>
+            </button>
+        </form>
+    </div>
+</body>
+
+</html>
