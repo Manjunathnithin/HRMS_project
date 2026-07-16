@@ -1,12 +1,14 @@
 import json
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.db import models
 from django.db.models import Sum, Count
 from django.contrib import messages
 
 from employees.models import EmployeeProfile, Department
 from leaves.models import LeaveRequest, LeaveBalance
 from leaves.forms import LeaveApplicationForm
+from .models import User, EmployeeProfile, Department
 
 @login_required
 def dashboard_router(request):
