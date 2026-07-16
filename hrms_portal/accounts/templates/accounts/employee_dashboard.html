@@ -3,13 +3,14 @@
 {% block title %}Employee Portal{% endblock %}
 
 {% block sidebar_links %}
-<a href="{% url 'employee_dashboard' %}"
-    class="flex items-center gap-3 px-3 py-2 bg-slate-800 text-white rounded-lg font-medium">
+<a href="{% url 'employee_dashboard' %}" class="flex items-center gap-3 px-3 py-2 bg-slate-800 text-white rounded-lg font-medium">
     <i class="fa-solid fa-user-shield text-emerald-400"></i><span>My Profile Workspace</span>
 </a>
-<a href="{% url 'apply_leave' %}"
-    class="flex items-center gap-3 px-3 py-2 text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg transition-all">
+<a href="{% url 'apply_leave' %}" class="flex items-center gap-3 px-3 py-2 text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg transition-all">
     <i class="fa-solid fa-paper-plane"></i><span>Apply For Leave</span>
+</a>
+<a href="{% url 'leave_history' %}" class="flex items-center gap-3 px-3 py-2 text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg transition-all">
+    <i class="fa-solid fa-clock-rotate-left"></i><span>Full Leave History</span>
 </a>
 {% endblock %}
 

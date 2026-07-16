@@ -9,7 +9,7 @@
 </head>
 <body class="bg-gray-50 font-sans antialiased text-gray-900">
 
-    <div class="min-h-screen flex flex-col md:flex-row">
+    <div class="min-screen flex flex-col md:flex-row min-h-screen">
         <aside class="w-full md:w-64 bg-slate-900 text-slate-100 flex flex-col px-4 py-6 shadow-xl">
             <div class="flex items-center gap-3 px-2 mb-8">
                 <i class="fa-solid fa-people-roof text-blue-400 text-2xl"></i>
@@ -17,13 +17,7 @@
             </div>
             
             <nav class="flex-1 space-y-2">
-               {% block sidebar_links %}
-                    <a href="{% url 'hr_dashboard' %}" class="flex items-center gap-3 px-3 py-2 bg-slate-800 text-white rounded-lg font-medium">
-                        <i class="fa-solid fa-chart-pie text-blue-400"></i><span>Analytics Console</span>
-                    </a>
-                    <a href="{% url 'staff_directory' %}" class="flex items-center gap-3 px-3 py-2 text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg transition-all">
-                        <i class="fa-solid fa-users"></i><span>Staff Directory</span>
-                    </a>
+                {% block sidebar_links %}
                 {% endblock %}
             </nav>
 
@@ -34,7 +28,9 @@
                     </div>
                     <div class="text-sm">
                         <p class="font-medium text-slate-200 truncate">{{ request.user.username }}</p>
-                        <p class="text-xs text-slate-400">{% if request.user.is_hr %}HR Admin{% else %}Employee{% endif %}</p>
+                        <p class="text-xs text-slate-400">
+                            {% if request.user.is_hr %}HR Admin{% else %}Employee{% endif %}
+                        </p>
                     </div>
                 </div>
                 <form action="{% url 'logout' %}" method="post" class="w-full">
@@ -48,6 +44,32 @@
         </aside>
 
         <main class="flex-1 p-6 md:p-10 overflow-y-auto">
+            
+            {% if messages %}
+                <div class="mb-6 space-y-3">
+                    {% for message in messages %}
+                        <div class="p-4 text-sm rounded-lg flex items-center justify-between border shadow-sm transition-all duration-300 
+                            {% if message.tags == 'success' %} bg-emerald-50 text-emerald-800 border-emerald-200
+                            {% elif message.tags == 'warning' %} bg-amber-50 text-amber-800 border-amber-200
+                            {% else %} bg-blue-50 text-blue-800 border-blue-200 {% endif %}">
+                            
+                            <div class="flex items-center gap-2">
+                                {% if message.tags == 'success' %}
+                                    <i class="fa-solid fa-circle-check text-emerald-600"></i>
+                                {% else %}
+                                    <i class="fa-solid fa-circle-exclamation text-amber-600"></i>
+                                {% endif %}
+                                <span>{{ message }}</span>
+                            </div>
+                            
+                            <button type="button" onclick="this.parentElement.remove()" class="text-slate-400 hover:text-slate-600 ml-4">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
             {% block content %}
             {% endblock %}
         </main>

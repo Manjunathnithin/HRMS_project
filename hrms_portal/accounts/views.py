@@ -2,6 +2,7 @@ import json
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum, Count
+from django.contrib import messages
 
 from employees.models import EmployeeProfile, Department
 from leaves.models import LeaveRequest, LeaveBalance
@@ -85,6 +86,8 @@ def apply_leave(request):
             leave_instance = form.save(commit=False)
             leave_instance.user = request.user
             leave_instance.save()
+
+            messages.success(request, "Leave request submitted successfully.")
             return redirect('employee_dashboard')
     else:
         form = LeaveApplicationForm()
@@ -153,4 +156,17 @@ def staff_directory(request):
     return render(request, 'accounts/staff_directory.html', {
         'staff_members': staff_members,
         'search_query': search_query
+    })
+
+@login_required
+def leave_history(request):
+    """Provides a complete paginated historical log of all time-off entries for a worker."""
+    if not request.user.is_employee:
+        return redirect('dashboard_home')
+        
+    # Fetch all leave records for this specific logged-in user
+    all_leaves = LeaveRequest.objects.filter(user=request.user).order_by('-applied_on')
+    
+    return render(request, 'accounts/leave_history.html', {
+        'all_leaves': all_leaves
     })
