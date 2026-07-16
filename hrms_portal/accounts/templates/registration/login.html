@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>HRMS - Secure Gateway Login</title>
+</head>
+<body style="font-family: sans-serif; background-color: #f3f4f6; padding: 50px;">
+    <div style="max-width: 400px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+        <h2>HRMS Secure Sign-In</h2>
+        <hr>
+        
+        <form method="post">
+            {% csrf_token %}
+            
+            {% if form.errors %}
+                <p style="color: red;">Your username and password did not match. Please try again.</p>
+            {% endif %}
+
+            <div style="margin-bottom: 15px;">
+                <label for="id_username">Username:</label><br>
+                {{ form.username }}
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <label for="id_password">Password:</label><br>
+                {{ form.password }}
+            </div>
+            
+            <button type="submit" style="background: #2563eb; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; width: 100%;">
+                Authenticate
+            </button>
+        </form>
+    </div>
+</body>
+</html>
