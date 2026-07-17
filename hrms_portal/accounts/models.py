@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.conf import settings
+from datetime import datetime
 
 class User(AbstractUser):
     """Custom User Model that extends base corporate security credentials."""
@@ -57,3 +58,15 @@ class Attendance(models.Model):
             minutes = int((total_seconds % 3600) // 60)
             return f"{hours}h {minutes}m"
         return "Active Shift/Incomplete"
+
+    @property
+    def total_working_hours(self):
+        if self.punch_in and self.punch_out:
+            duration = self.punch_out - self.punch_in
+            total_seconds = int(duration.total_seconds())
+            hours = int(total_seconds // 3600)
+            minutes = int((total_seconds % 3600) // 60)
+            return f"{hours}h {minutes}m"
+        elif self.punch_in:
+            return "Session Active"
+        return "Incomplete Shift"

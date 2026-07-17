@@ -9,6 +9,7 @@ from django.utils import timezone
 from .models import User, Attendance
 from leaves.models import LeaveRequest
 from leaves.forms import LeaveApplicationForm
+from .decorators import hr_required, employee_required
 
 
 # ==============================================================================
@@ -104,6 +105,7 @@ def dashboard_router(request):
 
 
 @login_required
+@hr_required
 def hr_dashboard(request):
     """Renders HR management metrics along with incoming leave data flows."""
     today = timezone.localdate()
@@ -120,7 +122,7 @@ def hr_dashboard(request):
     
     # 3. Dynamic Attendance Toggle Data Fetch (Ensures the Single Button functions correctly)
     attendance = Attendance.objects.filter(user=request.user, date=today).first()
-    
+    live_attendance_logs = Attendance.objects.all().select_related('user').order_by('-date', 'punch_in')[:7]
     # 4. Department chart data breakdown logic placeholder variables
     chart_labels = ['Operations', 'Technology', 'Finance', 'HR Support']
     chart_data = [12, 19, 5, 2]
@@ -131,6 +133,7 @@ def hr_dashboard(request):
         'total_payroll': total_payroll,
         'recent_requests': recent_requests,
         'attendance': attendance,
+        'live_attendance_logs': live_attendance_logs,
         'chart_labels': chart_labels,
         'chart_data': chart_data,
     }
@@ -138,6 +141,7 @@ def hr_dashboard(request):
 
 
 @login_required
+@employee_required
 def employee_dashboard(request):
     """Renders employee dashboard metrics along with personal leave data balances."""
     today = timezone.localdate()
@@ -150,7 +154,7 @@ def employee_dashboard(request):
     
     # Dynamic Attendance Toggle Data Fetch (Ensures the Single Button functions correctly)
     attendance = Attendance.objects.filter(user=request.user, date=today).first()
-    
+    shift_logs = Attendance.objects.filter(user=request.user).order_by('-date')[:7]
     # Safe structure mappings for available quota balances
     balances = {
         'sick_leave_remaining': getattr(profile, 'sick_leave_balance', 15),
@@ -164,6 +168,7 @@ def employee_dashboard(request):
         'approved_count': approved_count,
         'pending_count': pending_count,
         'attendance': attendance,
+        'shift_logs' : shift_logs,
         'balances': balances,
     }
     return render(request, 'accounts/employee_dashboard.html', context)
@@ -267,11 +272,9 @@ def staff_directory(request):
     return render(request, 'accounts/staff_directory.html', {'staff_members': staff_members})
 
 @login_required
+@hr_required
 def hr_leave_requests_list(request):
     """Displays a complete historical grid table overview of all employee leave applications for HR."""
-    if not request.user.is_hr:
-        messages.error(request, "Access Denied. HR administrative credentials required.")
-        return redirect('dashboard_home')
         
     # Fetch all leave requests ordered by newest first
     all_requests = LeaveRequest.objects.all().order_by('-id')

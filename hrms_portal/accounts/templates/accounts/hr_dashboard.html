@@ -11,7 +11,7 @@
     class="flex items-center gap-3 px-3 py-2 text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg transition-all">
     <i class="fa-solid fa-users"></i><span>Staff Directory</span>
 </a>
-<a href="{% url 'hr_leave_requests' %}" class="flex items-center gap-3 ...">
+<a href="{% url 'hr_leave_requests' %}" class="flex items-center gap-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg transition-all">
     <i class="fa-solid fa-calendar-check"></i><span>Leave Requests</span>
 </a>
 {% endblock %}
@@ -23,21 +23,18 @@
 </div>
 
 <!-- SYSTEM ATTENDANCE TRACKER DASHBOARD WIDGET (DYNAMIC SINGLE BUTTON) -->
-<div
-    class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm mb-6 flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
+<div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm mb-6 flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
     <div>
         <h4 class="text-sm font-bold text-slate-800 flex items-center gap-2">
             <i class="fa-solid fa-clock text-slate-400"></i> Corporate Shift Terminal
         </h4>
         <p class="text-xs text-slate-400 mt-0.5">
             {% if not attendance.punch_in %}
-            You are currently clocked out. Start your daily work session.
+                You are currently clocked out. Start your daily work session.
             {% elif attendance.punch_in and not attendance.punch_out %}
-            Shift active since <span class="font-mono text-xs font-semibold text-emerald-600">{{
-                attendance.punch_in|date:"H:i" }}</span>.
+                Shift active since <span class="font-mono text-xs font-semibold text-emerald-600">{{ attendance.punch_in|date:"H:i" }}</span>.
             {% else %}
-            Shift complete for today! Total duration: <span class="font-semibold text-blue-600">{{
-                attendance.total_working_hours }}</span>.
+                Shift complete for today! Total duration: <span class="font-semibold text-blue-600">{{ attendance.total_working_hours }}</span>.
             {% endif %}
         </p>
     </div>
@@ -69,6 +66,7 @@
     </form>
 </div>
 
+<!-- TOP METRIC CARDS OVERVIEW -->
 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
     <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 flex items-center justify-between">
         <div>
@@ -91,12 +89,13 @@
             <p class="text-sm font-medium text-slate-500 uppercase tracking-wider">Monthly Payroll Allocation</p>
             <h3 class="text-3xl font-bold text-emerald-600 mt-2">₹{{ total_payroll }}</h3>
         </div>
-        <div class="p-3 bg-emerald-50 text-emerald-600 rounded-lg"><i class="fa-solid fa-indian-rupee-sign text-xl"></i>
-        </div>
+        <div class="p-3 bg-emerald-50 text-emerald-600 rounded-lg"><i class="fa-solid fa-indian-rupee-sign text-xl"></i></div>
     </div>
 </div>
 
+<!-- DEPARTMENT METRIC CHARTS & OPERATIONS STREAM GRID ROW -->
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
+    <!-- LEFT: Department Headcount Doughnut Wrapper Card (1/3 Screen Space) -->
     <div class="lg:col-span-1 bg-white p-6 rounded-xl shadow-sm border border-slate-100 flex flex-col justify-between">
         <h3 class="text-lg font-bold text-slate-900 mb-4">Department Headcount</h3>
         <div class="relative min-h-[220px] w-full flex items-center justify-center mx-auto">
@@ -104,66 +103,50 @@
         </div>
     </div>
 
+    <!-- RIGHT: Live Corporate Operations Presence Stream Grid (2/3 Screen Space) -->
     <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-100 p-6">
-        <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-bold text-slate-900">Incoming Leave Requests Pipeline</h3>
-            <a href="{% url 'hr_leave_requests' %}" class="text-xs font-semibold text-blue-600 ...">Manage All <i
-                    class="fa-solid fa-arrow-right"></i></a>
-        </div>
-
+        <h3 class="text-lg font-bold text-slate-900 mb-4">Live Corporate Operations Presence Stream</h3>
         <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse">
                 <thead>
                     <tr class="border-b border-slate-100 text-slate-400 text-xs uppercase font-medium">
                         <th class="py-3 px-4">Employee</th>
-                        <th class="py-3 px-4">Type</th>
-                        <th class="py-3 px-4">Duration</th>
-                        <th class="py-3 px-4">Reason</th>
-                        <th class="py-3 px-4">Status</th>
-                        <th class="py-3 px-4 text-right">Action</th>
+                        <th class="py-3 px-4">Shift Date</th>
+                        <th class="py-3 px-4">Clocked In</th>
+                        <th class="py-3 px-4">Clocked Out</th>
+                        <th class="py-3 px-4">Operational Status</th>
                     </tr>
                 </thead>
                 <tbody class="text-sm text-slate-700 divide-y divide-slate-50">
-                    {% for leave in recent_requests %}
-                    <tr>
-                        <td class="py-3 px-4 font-medium text-slate-900">{{ leave.user.username }}</td>
-                        <td class="py-3 px-4">{{ leave.get_leave_type_display }}</td>
-                        <td class="py-3 px-4 text-xs text-slate-500">{{ leave.start_date }} to {{ leave.end_date }}</td>
-                        <td class="py-3 px-4 max-w-[120px] truncate text-slate-600" title="{{ leave.reason }}">{{
-                            leave.reason }}</td>
-                        <td class="py-3 px-4">
-                            {% if leave.status == 'Pending' %}
-                            <span
-                                class="px-2 py-0.5 text-xs font-semibold bg-amber-50 text-amber-700 rounded-full">Pending</span>
-                            {% elif leave.status == 'Approved' %}
-                            <span
-                                class="px-2 py-0.5 text-xs font-semibold bg-emerald-50 text-emerald-700 rounded-full">Approved</span>
-                            {% else %}
-                            <span
-                                class="px-2 py-0.5 text-xs font-semibold bg-rose-50 text-rose-700 rounded-full">Rejected</span>
-                            {% endif %}
+                    {% for log in live_attendance_logs %}
+                    <tr class="hover:bg-slate-50/50 transition-all">
+                        <td class="py-3 px-4 font-medium text-slate-900">{{ log.user.username }}</td>
+                        <td class="py-3 px-4 text-slate-500 font-mono text-xs">{{ log.date }}</td>
+                        <td class="py-3 px-4 text-slate-500 font-mono text-xs">
+                            {{ log.punch_in|time:"H:i:s"|default:"--" }}
                         </td>
-                        <td class="py-3 px-4 text-right">
-                            {% if leave.status == 'Pending' %}
-                            <div class="flex items-center justify-end gap-2">
-                                <a href="{% url 'approve_leave_action' leave.id %}"
-                                    class="px-2 py-1 bg-emerald-600 text-white rounded text-xs font-medium hover:bg-emerald-700 shadow-sm transition-all">
-                                    Approve
-                                </a>
-                                <a href="{% url 'reject_leave_action' leave.id %}"
-                                    class="px-2 py-1 bg-rose-50 border border-rose-200 text-rose-600 rounded text-xs font-medium hover:bg-rose-100 transition-all">
-                                    Reject
-                                </a>
-                            </div>
+                        <td class="py-3 px-4 text-slate-500 font-mono text-xs">
+                            {{ log.punch_out|time:"H:i:s"|default:"--" }}
+                        </td>
+                        <td class="py-3 px-4">
+                            {% if log.punch_out %}
+                            <span class="px-2 py-0.5 text-xs font-semibold bg-blue-50 text-blue-700 rounded-full">
+                                {{ log.total_working_hours }}
+                            </span>
+                            {% elif log.punch_in %}
+                            <span class="px-2 py-0.5 text-xs font-semibold bg-emerald-50 text-emerald-700 rounded-full animate-pulse">
+                                Active Session
+                            </span>
                             {% else %}
-                            <span class="text-xs text-slate-400 italic">Processed</span>
+                            <span class="px-2 py-0.5 text-xs font-semibold bg-slate-100 text-slate-400 rounded-full">
+                                Incomplete
+                            </span>
                             {% endif %}
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="6" class="py-8 text-center text-slate-400">No recent leave requests logged in the
-                            database pipeline yet.</td>
+                        <td colspan="5" class="py-6 text-center text-slate-400 italic">No staff operations metrics logged today.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -172,33 +155,95 @@
     </div>
 </div>
 
+<!-- LEAVE REQUESTS PIPELINE LOG CONTAINER -->
+<div class="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
+    <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-bold text-slate-900">Incoming Leave Requests Pipeline</h3>
+        <a href="{% url 'hr_leave_requests' %}" class="text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors">
+            Manage All <i class="fa-solid fa-arrow-right ml-1"></i>
+        </a>
+    </div>
+
+    <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+            <thead>
+                <tr class="border-b border-slate-100 text-slate-400 text-xs uppercase font-medium">
+                    <th class="py-3 px-4">Employee</th>
+                    <th class="py-3 px-4">Type</th>
+                    <th class="py-3 px-4">Duration</th>
+                    <th class="py-3 px-4">Reason</th>
+                    <th class="py-3 px-4">Status</th>
+                    <th class="py-3 px-4 text-right">Action</th>
+                </tr>
+            </thead>
+            <tbody class="text-sm text-slate-700 divide-y divide-slate-50">
+                {% for leave in recent_requests %}
+                <tr>
+                    <td class="py-3 px-4 font-medium text-slate-900">{{ leave.user.username }}</td>
+                    <td class="py-3 px-4">{{ leave.get_leave_type_display }}</td>
+                    <td class="py-3 px-4 text-xs text-slate-500">{{ leave.start_date }} to {{ leave.end_date }}</td>
+                    <td class="py-3 px-4 max-w-[120px] truncate text-slate-600" title="{{ leave.reason }}">{{ leave.reason }}</td>
+                    <td class="py-3 px-4">
+                        {% if leave.status == 'Pending' %}
+                        <span class="px-2 py-0.5 text-xs font-semibold bg-amber-50 text-amber-700 rounded-full">Pending</span>
+                        {% elif leave.status == 'Approved' %}
+                        <span class="px-2 py-0.5 text-xs font-semibold bg-emerald-50 text-emerald-700 rounded-full">Approved</span>
+                        {% else %}
+                        <span class="px-2 py-0.5 text-xs font-semibold bg-rose-50 text-rose-700 rounded-full">Rejected</span>
+                        {% endif %}
+                    </td>
+                    <td class="py-3 px-4 text-right">
+                        {% if leave.status == 'Pending' %}
+                        <div class="flex items-center justify-end gap-2">
+                            <a href="{% url 'approve_leave_action' leave.id %}"
+                                class="px-2 py-1 bg-emerald-600 text-white rounded text-xs font-medium hover:bg-emerald-700 shadow-sm transition-all">
+                                Approve
+                            </a>
+                            <a href="{% url 'reject_leave_action' leave.id %}"
+                                class="px-2 py-1 bg-rose-50 border border-rose-200 text-rose-600 rounded text-xs font-medium hover:bg-rose-100 transition-all">
+                                Reject
+                            </a>
+                        </div>
+                        {% else %}
+                        <span class="text-xs text-slate-400 italic">Processed</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="py-8 text-center text-slate-400">No recent leave requests logged in the database pipeline yet.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     document.addEventListener("DOMContentLoaded", function () {
         const ctx = document.getElementById('departmentChart').getContext('2d');
+        const labels = {{ chart_labels|safe }};
+        const dataValues = {{ chart_data|safe }};
 
-        const labels = {{ chart_labels| safe
-    }};
-    const dataValues = {{ chart_data| safe }};
-
-    new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: labels,
-            datasets: [{
-                data: dataValues,
-                backgroundColor: ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'],
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { position: 'bottom' }
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: dataValues,
+                    backgroundColor: ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom' }
+                }
             }
-        }
-    });
+        });
     });
 </script>
 {% endblock %}
