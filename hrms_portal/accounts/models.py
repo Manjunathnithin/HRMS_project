@@ -32,3 +32,28 @@ class EmployeeProfile(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.employee_id}"
+
+class Attendance(models.Model):
+    """Tracks daily shift log timings, session lifetimes, and clock states."""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='attendance_logs')
+    date = models.DateField(auto_now_add=True)
+    punch_in = models.DateTimeField(null=True, blank=True)
+    punch_out = models.DateTimeField(null=True, blank=True)
+    
+    class Meta:
+        ordering = ['-date']
+        unique_together = ['user', 'date'] # One structural registry entry block per person per day
+
+    def __str__(self):
+        return f"{self.user.username} - {self.date}"
+
+    @property
+    def total_working_hours(self):
+        """Computes the exact duration metric profile output for a processed shift."""
+        if self.punch_in and self.punch_out:
+            duration = self.punch_out - self.punch_in
+            total_seconds = duration.total_seconds()
+            hours = int(total_seconds // 3600)
+            minutes = int((total_seconds % 3600) // 60)
+            return f"{hours}h {minutes}m"
+        return "Active Shift/Incomplete"

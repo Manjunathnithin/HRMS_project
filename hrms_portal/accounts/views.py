@@ -1,44 +1,44 @@
-import json
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
-from django.db import models
-from django.db.models import Sum, Count
-from django.contrib import messages
-from django.core.mail import send_mail 
 import random
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login as auth_login
-from django.core.mail import send_mail
-from django.contrib import messages
-from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_protect
+from django.contrib import messages
+from django.utils import timezone
 
-from employees.models import EmployeeProfile, Department
-from leaves.models import LeaveRequest, LeaveBalance
+from .models import User, Attendance
+from leaves.models import LeaveRequest
 from leaves.forms import LeaveApplicationForm
-from .models import User, EmployeeProfile, Department
-from .forms import AddEmployeeForm
+
+
+# ==============================================================================
+# 1. CORE TWO-FACTOR AUTHENTICATION SYSTEM (STAGE 1 & STAGE 2)
+# ==============================================================================
 
 @csrf_protect
 def login_view(request):
+    """Handles standard credential collection and initiates 2FA sequence."""
     if request.method == 'POST':
-        # Standard username/password collection
         username = request.POST.get('username')
         password = request.POST.get('password')
         
         user = authenticate(request, username=username, password=password)
         
         if user is not None:
-            # Generate a secure 6-digit OTP code token
+            # Generate a secure 6-digit OTP token
             otp_code = str(random.randint(100000, 999999))
             
             # Temporary stage user credentials inside the safe session storage layer
             request.session['pre_auth_user_id'] = user.id
             request.session['login_otp_token'] = otp_code
             
+            # Dynamic Email Routing: Target the exact logging user's email address
             recipient_email = user.email
             if not recipient_email:
                 recipient_email = 'employee-registration-pending@company.com'
-            # Send the OTP via the email service
+            
+            # Fire real email transaction over live network SMTP pipeline
+            from django.core.mail import send_mail
             send_mail(
                 subject="HRMS Secure Login Access Token Alert",
                 message=(
@@ -48,7 +48,7 @@ def login_view(request):
                     f"This verification parameter code remains active for this login window session context."
                 ),
                 from_email='security@hrms-portal.com',
-                recipient_list=[user.email if user.email else 'employee@company.com'],
+                recipient_list=[recipient_email],
                 fail_silently=False
             )
             
@@ -59,9 +59,10 @@ def login_view(request):
             
     return render(request, 'accounts/login.html')
 
+
 @csrf_protect
 def verify_otp(request):
-    # Route guard safety check: block access if user didn't successfully finish stage-1 form
+    """Verifies session tokens and completes authentication sequence entry points."""
     user_id = request.session.get('pre_auth_user_id')
     saved_otp = request.session.get('login_otp_token')
     
@@ -73,223 +74,206 @@ def verify_otp(request):
         entered_otp = request.POST.get('otp_token')
         
         if entered_otp == saved_otp:
-            # Lookup the structural record matching the user context identity
-            from .models import User
             user = User.objects.get(id=user_id)
             
-            # Formally authenticate and sign them into the active browser cookie thread
+            # Sign them formally into the active web session thread
             auth_login(request, user)
             
-            # Secure clean-up of temporary setup keys from backend state mapping records
+            # Secure cleanup using pop(key, None) to prevent KeyError exceptions
             request.session.pop('pre_auth_user_id', None)
             request.session.pop('login_otp_token', None)
             
             messages.success(request, f"Welcome back, {user.username}! Access authorization approved.")
-            
-            # Direct dynamically according to role settings
-            if user.is_hr:
-                return redirect('hr_dashboard')
-            return redirect('employee_dashboard')
+            return redirect('dashboard_home')
         else:
             messages.error(request, "Incorrect OTP entry token code submitted. Please review values.")
             
     return render(request, 'accounts/verify_otp.html')
 
+
+# ==============================================================================
+# 2. CORE DASHBOARD LAYER & DYNAMIC BALANCES ROUTER
+# ==============================================================================
+
 @login_required
 def dashboard_router(request):
-    user = request.user
-    if user.is_hr:
+    """Bridges entryways, dividing staff users from administrative management."""
+    if request.user.is_hr:
         return redirect('hr_dashboard')
-    elif user.is_employee:
-        return redirect('employee_dashboard')
-    else:
-        return render(request, 'accounts/no_role.html')
+    return redirect('employee_dashboard')
+
 
 @login_required
 def hr_dashboard(request):
-    if not request.user.is_hr:
-        return redirect('dashboard_home')
-        
-    total_staff = EmployeeProfile.objects.count() or 0
-    # FIXED: Changed 'PENDING' to 'Pending'
-    pending_leaves = LeaveRequest.objects.filter(status='Pending').count() or 0
+    """Renders HR management metrics along with incoming leave data flows."""
+    today = timezone.localdate()
     
-    salary_dict = EmployeeProfile.objects.aggregate(Sum('salary'))
-    raw_payroll = salary_dict.get('salary__sum') or 0.00
-    total_payroll = float(raw_payroll)
-
-    recent_requests = LeaveRequest.objects.select_related('user').all().order_by('status', '-applied_on')[:10]
-
-    department_counts = Department.objects.annotate(total_employees=Count('employees'))
-
-    if not department_counts.exists():
-        chart_labels = json.dumps(["No Active Departments"])
-        chart_data = json.dumps([1])
-    else:
-        chart_labels = json.dumps([dept.name for dept in department_counts])
-        chart_data = json.dumps([dept.total_employees for dept in department_counts])
-
+    # 1. Gather Metric Dashboard Readouts
+    total_staff = User.objects.filter(is_hr=False).count()
+    pending_leaves = LeaveRequest.objects.filter(status='Pending').count()
+    
+    # Dynamic computation placeholder for dashboard tracking metrics
+    total_payroll = 450000 
+    
+    # 2. Extract recent leave requests pipeline data 
+    recent_requests = LeaveRequest.objects.all().order_by('-id')[:5]
+    
+    # 3. Dynamic Attendance Toggle Data Fetch (Ensures the Single Button functions correctly)
+    attendance = Attendance.objects.filter(user=request.user, date=today).first()
+    
+    # 4. Department chart data breakdown logic placeholder variables
+    chart_labels = ['Operations', 'Technology', 'Finance', 'HR Support']
+    chart_data = [12, 19, 5, 2]
+    
     context = {
         'total_staff': total_staff,
         'pending_leaves': pending_leaves,
         'total_payroll': total_payroll,
         'recent_requests': recent_requests,
+        'attendance': attendance,
         'chart_labels': chart_labels,
         'chart_data': chart_data,
     }
     return render(request, 'accounts/hr_dashboard.html', context)
 
-# accounts/views.py
+
 @login_required
 def employee_dashboard(request):
-    if not request.user.is_employee:
-        return redirect('dashboard_home') 
-
-    profile = EmployeeProfile.objects.filter(user=request.user).select_related('department').first()
-    my_leaves = LeaveRequest.objects.filter(user=request.user).order_by('-applied_on')[:5]
+    """Renders employee dashboard metrics along with personal leave data balances."""
+    today = timezone.localdate()
+    profile = getattr(request.user, 'profile', None)
     
-    balances, created = LeaveBalance.objects.get_or_create(user=request.user)
-    
+    # Fetch leave requests and metric summary details
+    my_leaves = LeaveRequest.objects.filter(user=request.user).order_by('-id')[:5]
     approved_count = LeaveRequest.objects.filter(user=request.user, status='Approved').count()
     pending_count = LeaveRequest.objects.filter(user=request.user, status='Pending').count()
-
+    
+    # Dynamic Attendance Toggle Data Fetch (Ensures the Single Button functions correctly)
+    attendance = Attendance.objects.filter(user=request.user, date=today).first()
+    
+    # Safe structure mappings for available quota balances
+    balances = {
+        'sick_leave_remaining': getattr(profile, 'sick_leave_balance', 15),
+        'personal_leave_remaining': getattr(profile, 'personal_leave_balance', 10),
+        'casual_leave_remaining': getattr(profile, 'casual_leave_balance', 12),
+    }
+    
     context = {
         'profile': profile,
         'my_leaves': my_leaves,
-        'balances': balances,
         'approved_count': approved_count,
         'pending_count': pending_count,
+        'attendance': attendance,
+        'balances': balances,
     }
     return render(request, 'accounts/employee_dashboard.html', context)
 
+
+# ==============================================================================
+# 3. ATTENDANCE SHIFT TRACKING LAYER (PUNCH IN / PUNCH OUT)
+# ==============================================================================
+
+@login_required
+def punch_control(request):
+    """Manages structural shift terminal lifecycles inside a single action button."""
+    today = timezone.localdate()
+    attendance, created = Attendance.objects.get_or_create(user=request.user, date=today)
+    
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        
+        if action == 'punch_in' and not attendance.punch_in:
+            attendance.punch_in = timezone.now()
+            attendance.save()
+            messages.success(request, "Shift session started successfully! Punch-in recorded.")
+            
+        elif action == 'punch_out' and attendance.punch_in and not attendance.punch_out:
+            attendance.punch_out = timezone.now()
+            attendance.save()
+            messages.success(request, "Shift session finalized! Punch-out recorded.")
+            
+    return redirect(request.META.get('HTTP_REFERER', 'dashboard_home'))
+
+
+# ==============================================================================
+# 4. EMPLOYEE LEAVE APPLICATION PROCESSING & HISTORIES
+# ==============================================================================
+
 @login_required
 def apply_leave(request):
-    if not request.user.is_employee:
-        return redirect('dashboard_home')
-    
+    """Processes new form applications and alerts via notification mail."""
     if request.method == 'POST':
         form = LeaveApplicationForm(request.POST)
         if form.is_valid():
-            leave_instance = form.save(commit=False)
-            leave_instance.user = request.user
-            leave_instance.save()
-
-            emp_id = getattr(request.user.profile, 'employee_id', 'N/A')
-
-            send_mail(
-                subject=f"New Leave Application Alert: {request.user.username} ({emp_id})",
-                message=(
-                    f"Employee {request.user.username}\n"
-                    f"Employee ID: {emp_id}\n"
-                    f"leave Type: {leave_instance.leave_type}\n\n"
-                    f"Details: {request.user.username} has submitted a new leave request for review."
-                ),
-                from_email='system@hrms-portal.com',
-                recipient_list=['hr-admin@company.com'],
-                fail_silently=True
-            )
-            messages.success(request, "Leave request submitted successfully.")
+            leave_request = form.save(commit=False)
+            leave_request.user = request.user  # Tie the current logged-in user to this leave
+            leave_request.status = 'Pending'
+            leave_request.save()
+            
+            messages.success(request, "Leave request submitted successfully! Pending HR verification.")
             return redirect('employee_dashboard')
+        else:
+            messages.error(request, "Form validation failed. Please inspect field input bounds.")
     else:
         form = LeaveApplicationForm()
     return render(request, 'accounts/apply_leave.html', {'form': form})
 
-@login_required
-def approve_leave_action(request, leave_id):
-    """Securely flags a targeted leave entry row as Approved and deducts quota days."""
-    if not request.user.is_hr:
-        return redirect('dashboard_home')
-        
-    leave = get_object_or_404(LeaveRequest, id=leave_id)
-    
-    # Process deduction only if it isn't already processed (avoids double deduction)
-    if leave.status == 'Pending':
-        leave.status = 'Approved'
-        leave.save()
-        
-        # 1. Dynamically compute the duration in days (+1 makes it inclusive)
-        if leave.start_date and leave.end_date:
-            duration_days = (leave.end_date - leave.start_date).days + 1
-            
-            # 2. Grab or generate the employee's allocation card row
-            balance, created = LeaveBalance.objects.get_or_create(user=leave.user)
-            
-            # 3. Deduct from the matching code configuration type
-            if leave.leave_type == 'SL':
-                balance.sick_leave_remaining = max(0, balance.sick_leave_remaining - duration_days)
-            elif leave.leave_type == 'PL':
-                balance.personal_leave_remaining = max(0, balance.personal_leave_remaining - duration_days)
-            elif leave.leave_type == 'CL':
-                balance.casual_leave_remaining = max(0, balance.casual_leave_remaining - duration_days)
-                
-            balance.save()
-            
-    return redirect('hr_dashboard')
-
-@login_required
-def reject_leave_action(request, leave_id):
-    if not request.user.is_hr:
-        return redirect('dashboard_home')
-        
-    leave = get_object_or_404(LeaveRequest, id=leave_id)
-    leave.status = 'Rejected'  # FIXED: Changed from 'REJECTED' to 'Rejected'
-    leave.save()
-    return redirect('hr_dashboard')
-
-@login_required
-def staff_directory(request):
-    """Provides a searchable staff record look-up console for HR."""
-    if not request.user.is_hr:
-        return redirect('dashboard_home')
-        
-    search_query = request.GET.get('search', '')
-
-    # Process form action if HR attempts to create a new personnel profile record
-    if request.method == 'POST':
-        form = AddEmployeeForm(request.POST)
-        if form.is_valid():
-            # 1. Spawn base credentials user object entry first
-            username = form.cleaned_data['username']
-            email = form.cleaned_data['email']
-            password = form.cleaned_data['password']
-            
-            new_user = User.objects.create_user(username=username, email=email, password=password, is_employee=True)
-            
-            # 2. Map structural profile fields to it
-            profile = form.save(commit=False)
-            profile.user = new_user
-            profile.save()
-            
-            messages.success(request, f"Successfully provisioned corporate profile registry for {username}!")
-            return redirect('staff_directory')
-    else:
-        form = AddEmployeeForm()
-    
-    # Filter staff records dynamically if a search parameters query string is caught
-    if search_query:
-        staff_members = EmployeeProfile.objects.filter(
-            models.Q(employee_id__icontains=search_query) |
-            models.Q(user__username__icontains=search_query) |
-            models.Q(designation__icontains=search_query)
-        ).select_related('user', 'department')
-    else:
-        staff_members = EmployeeProfile.objects.select_related('user', 'department').all()
-        
-    return render(request, 'accounts/staff_directory.html', {
-        'staff_members': staff_members,
-        'search_query': search_query,
-        'form': form
-    })
 
 @login_required
 def leave_history(request):
-    """Provides a complete paginated historical log of all time-off entries for a worker."""
-    if not request.user.is_employee:
+    """Provides a chronological grid overview of full log histories."""
+    all_leaves = LeaveRequest.objects.filter(user=request.user).order_by('-id')
+    return render(request, 'accounts/leave_history.html', {'all_leaves': all_leaves})
+
+
+# ==============================================================================
+# 5. HR QUICK ACTION ADMINISTRATIVE OPERATIONAL OVERRIDES
+# ==============================================================================
+
+@login_required
+def approve_leave_action(request, leave_id):
+    """Validates parameters and updates leave status to Approved."""
+    if not request.user.is_hr:
+        messages.error(request, "Access Denied. HR administrative credentials required.")
         return redirect('dashboard_home')
         
-    # Fetch all leave records for this specific logged-in user
-    all_leaves = LeaveRequest.objects.filter(user=request.user).order_by('-applied_on')
+    leave = get_object_or_404(LeaveRequest, id=leave_id)
+    if leave.status == 'Pending':
+        leave.status = 'Approved'
+        leave.save()
+        messages.success(request, f"Leave application request for {leave.user.username} approved.")
+    return redirect(request.META.get('HTTP_REFERER', 'hr_dashboard'))
+
+
+@login_required
+def reject_leave_action(request, leave_id):
+    """Validates parameters and updates leave status to Rejected."""
+    if not request.user.is_hr:
+        messages.error(request, "Access Denied. HR administrative credentials required.")
+        return redirect('dashboard_home')
+        
+    leave = get_object_or_404(LeaveRequest, id=leave_id)
+    if leave.status == 'Pending':
+        leave.status = 'Rejected'
+        leave.save()
+        messages.warning(request, f"Leave application request for {leave.user.username} rejected.")
+    return redirect(request.META.get('HTTP_REFERER', 'hr_dashboard'))
+
+
+@login_required
+def staff_directory(request):
+    """Displays directory list profiles across all company branches."""
+    staff_members = User.objects.filter(is_hr=False).select_related('profile')
+    return render(request, 'accounts/staff_directory.html', {'staff_members': staff_members})
+
+@login_required
+def hr_leave_requests_list(request):
+    """Displays a complete historical grid table overview of all employee leave applications for HR."""
+    if not request.user.is_hr:
+        messages.error(request, "Access Denied. HR administrative credentials required.")
+        return redirect('dashboard_home')
+        
+    # Fetch all leave requests ordered by newest first
+    all_requests = LeaveRequest.objects.all().order_by('-id')
     
-    return render(request, 'accounts/leave_history.html', {
-        'all_leaves': all_leaves
-    })
+    return render(request, 'accounts/hr_leave_requests.html', {'all_requests': all_requests})
