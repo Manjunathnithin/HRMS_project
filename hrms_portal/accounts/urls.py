@@ -25,4 +25,7 @@ urlpatterns = [
     path('dashboard/hr/staff-directory/toggle-status/<int:user_id>/', views.toggle_staff_active_status, name='toggle_staff_active_status'),
     path('dashboard/hr/staff-directory/delete/<int:user_id>/', views.delete_staff_profile, name='delete_staff_profile'),
     path('dashboard/hr/staff-directory/export-csv/', views.export_staff_csv, name='export_staff_csv'),
+
+    #Announcement urls
+    path('dashboard/hr/post-announcements/', views.post_announcement, name='post_announcement'),
 ]

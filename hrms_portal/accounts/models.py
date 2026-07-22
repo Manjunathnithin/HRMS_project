@@ -71,3 +71,15 @@ class Attendance(models.Model):
             return "Session Active"
         return "Incomplete Shift"
 
+class Announcement(models.Model):
+    """Model for HR company-wide notices and broadcast messages."""
+    title = models.CharField(max_length=200)
+    content = models.TextField()
+    posted_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='announcements')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.title

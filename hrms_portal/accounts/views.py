@@ -1,5 +1,6 @@
 import random
 import csv
+import calendar
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login as auth_login
 from django.contrib.auth.decorators import login_required
@@ -8,8 +9,9 @@ from django.contrib import messages
 from django.utils import timezone
 from django.db.models import Count, Q 
 from django.http import HttpResponse
+from datetime import date
 
-from .models import User, Attendance, Department
+from .models import User, Attendance, Department, Announcement
 from leaves.models import LeaveRequest
 from leaves.forms import LeaveApplicationForm
 from .decorators import hr_required, employee_required
@@ -140,18 +142,96 @@ def hr_dashboard(request):
     return render(request, 'accounts/hr_dashboard.html', context)
 
 
+import calendar
+from datetime import date
+
 @login_required
 @employee_required
 def employee_dashboard(request):
-    """Renders employee dashboard metrics along with personal leave data balances."""
+    """Renders employee dashboard metrics along with dynamic leave balances, HR notices, and monthly calendar."""
     today = timezone.localdate()
     profile = getattr(request.user, 'profile', None)
+
+    attendance = Attendance.objects.filter(user=request.user, date=today).first()
+    
+    # 1. Calendar Generation Logic for Current Month
+    year = int(request.GET.get('year', today.year))
+    month = int(request.GET.get('month', today.month))
+    
+    cal = calendar.Calendar(firstweekday=0) # Monday start
+    month_days = cal.monthdatescalendar(year, month)
+    
+    # Fetch attendance and approved leaves for the requested month
+    month_attendance = Attendance.objects.filter(
+        user=request.user, 
+        date__year=year, 
+        date__month=month
+    )
+    attendance_dict = {att.date: att for att in month_attendance}
+
+    approved_leaves = LeaveRequest.objects.filter(
+        user=request.user,
+        status='Approved',
+        start_date__lte=date(year, month, calendar.monthrange(year, month)[1]),
+        end_date__gte=date(year, month, 1)
+    )
+    
+    # Map leave days for fast checking
+    leave_days_set = set()
+    for leave in approved_leaves:
+        curr = leave.start_date
+        while curr <= leave.end_date:
+            leave_days_set.add(curr)
+            curr += timezone.timedelta(days=1)
+
+    # Build calendar structure with metadata
+    calendar_matrix = []
+    for week in month_days:
+        week_data = []
+        for day in week:
+            status = 'regular'
+            att_entry = attendance_dict.get(day)
+            
+            if day.month != month:
+                status = 'other_month'
+            elif att_entry and att_entry.punch_in:
+                status = 'present'
+            elif day in leave_days_set:
+                status = 'on_leave'
+            elif day.weekday() in [5, 6]: # Saturday/Sunday
+                status = 'weekend'
+            elif day < today:
+                status = 'absent'
+
+            week_data.append({
+                'date': day,
+                'day_num': day.day,
+                'status': status,
+                'attendance': att_entry,
+                'is_today': day == today
+            })
+        calendar_matrix.append(week_data)
+
+    # Next / Prev month navigation dates
+    prev_month = month - 1 if month > 1 else 12
+    prev_year = year - 1 if month == 1 else year
+    next_month = month + 1 if month < 12 else 1
+    next_year = year + 1 if month == 12 else year
+
     my_leaves = LeaveRequest.objects.filter(user=request.user).order_by('-id')[:5]
     approved_count = LeaveRequest.objects.filter(user=request.user, status='Approved').count()
     pending_count = LeaveRequest.objects.filter(user=request.user, status='Pending').count()
+    
     attendance = Attendance.objects.filter(user=request.user, date=today).first()
     shift_logs = Attendance.objects.filter(user=request.user).order_by('-date')[:7]
-    
+
+    # Fetch Announcements
+    try:
+        from .models import Announcement
+        announcements = Announcement.objects.all().order_by('-created_at')[:3]
+    except Exception:
+        announcements = []
+
     balances = {
         'sick_leave_remaining': getattr(profile, 'sick_leave_balance', 15),
         'personal_leave_remaining': getattr(profile, 'personal_leave_balance', 10),
@@ -166,9 +246,19 @@ def employee_dashboard(request):
         'attendance': attendance,
         'shift_logs': shift_logs,
         'balances': balances,
+        'announcements': announcements,
+        
+        # Calendar Context Data
+        'calendar_matrix': calendar_matrix,
+        'current_year': year,
+        'current_month': month,
+        'month_name': date(year, month, 1).strftime('%B'),
+        'prev_month': prev_month,
+        'prev_year': prev_year,
+        'next_month': next_month,
+        'next_year': next_year,
     }
     return render(request, 'accounts/employee_dashboard.html', context)
-
 
 # ==============================================================================
 # 3. ATTENDANCE SHIFT TRACKING LAYER (PUNCH IN / PUNCH OUT)
@@ -233,7 +323,7 @@ def leave_history(request):
 
 @login_required
 def approve_leave_action(request, leave_id):
-    """Validates parameters and updates leave status to Approved."""
+    """Validates parameters, updates leave status to Approved, and deducts leave balance."""
     if not request.user.is_hr:
         messages.error(request, "Access Denied. HR administrative credentials required.")
         return redirect('dashboard_home')
@@ -242,9 +332,26 @@ def approve_leave_action(request, leave_id):
     if leave.status == 'Pending':
         leave.status = 'Approved'
         leave.save()
-        messages.success(request, f"Leave application request for {leave.user.username} approved.")
-    return redirect(request.META.get('HTTP_REFERER', 'hr_dashboard'))
+        
+        # Calculate requested leave duration (in days)
+        leave_days = (leave.end_date - leave.start_date).days + 1
+        if leave_days < 1:
+            leave_days = 1
 
+        # Fetch employee profile
+        profile = getattr(leave.user, 'profile', None)
+        if profile:
+            leave_type_str = str(leave.leave_type).lower()
+            if 'sick' in leave_type_str:
+                profile.sick_leave_balance = max(0, getattr(profile, 'sick_leave_balance', 15) - leave_days)
+            elif 'personal' in leave_type_str:
+                profile.personal_leave_balance = max(0, getattr(profile, 'personal_leave_balance', 10) - leave_days)
+            else:  # Casual Leave default
+                profile.casual_leave_balance = max(0, getattr(profile, 'casual_leave_balance', 12) - leave_days)
+            profile.save()
+
+        messages.success(request, f"Leave request for {leave.user.username} approved ({leave_days} days deducted).")
+    return redirect(request.META.get('HTTP_REFERER', 'hr_dashboard'))
 
 @login_required
 def reject_leave_action(request, leave_id):
@@ -405,3 +512,23 @@ def export_staff_csv(request):
         writer.writerow([member.username, member.email, emp_id, dept, designation, salary, status])
 
     return response
+
+@login_required
+@hr_required
+def post_announcement(request):
+    """Allows HR to broadcast company-wide notices."""
+    if request.method == 'POST':
+        title = request.POST.get('title', '').strip()
+        content = request.POST.get('content', '').strip()
+        
+        if title and content:
+            Announcement.objects.create(
+                title=title,
+                content=content,
+                posted_by=request.user
+            )
+            messages.success(request, "Company announcement published successfully!")
+        else:
+            messages.error(request, "Announcement title and body content cannot be empty.")
+            
+    return redirect('hr_dashboard')
