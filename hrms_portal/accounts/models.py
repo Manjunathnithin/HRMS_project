@@ -70,3 +70,4 @@ class Attendance(models.Model):
         elif self.punch_in:
             return "Session Active"
         return "Incomplete Shift"
+

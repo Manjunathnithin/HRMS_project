@@ -9,14 +9,17 @@
 </head>
 <body class="bg-gray-50 font-sans antialiased text-gray-900">
 
-    <div class="min-screen flex flex-col md:flex-row min-h-screen">
-        <aside class="w-full md:w-64 bg-slate-900 text-slate-100 flex flex-col px-4 py-6 shadow-xl">
+    <!-- Parent container locked to exact screen layout dimensions -->
+    <div class="flex flex-col md:flex-row h-screen overflow-hidden">
+        
+        <!-- FIXED/STATIC SIDEBAR NAVIGATION LAYER -->
+        <aside class="w-full md:w-64 bg-slate-900 text-slate-100 flex flex-col px-4 py-6 shadow-xl flex-shrink-0 md:h-full sticky top-0 z-50">
             <div class="flex items-center gap-3 px-2 mb-8">
                 <i class="fa-solid fa-people-roof text-blue-400 text-2xl"></i>
                 <span class="text-xl font-bold tracking-wider text-white">HRMS Portal</span>
             </div>
             
-            <nav class="flex-1 space-y-2">
+            <nav class="flex-1 space-y-2 overflow-y-auto">
                 {% block sidebar_links %}
                 {% endblock %}
             </nav>
@@ -43,7 +46,8 @@
             </div>
         </aside>
 
-        <main class="flex-1 p-6 md:p-10 overflow-y-auto">
+        <!-- INDEPENDENTLY SCROLLABLE MAIN CONTENT REGION -->
+        <main class="flex-1 p-6 md:p-10 h-full overflow-y-auto">
             
             {% if messages %}
                 <div class="mb-6 space-y-3">
