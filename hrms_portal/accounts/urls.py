@@ -13,7 +13,7 @@ urlpatterns = [
     
     path('leave/apply/', views.apply_leave, name='apply_leave'),
     path('leave/history/', views.leave_history, name='leave_history'),
-    
+
     path('dashboard/hr/leave-action/approve/<int:leave_id>/', views.approve_leave_action, name='approve_leave_action'),
     path('dashboard/hr/leave-action/reject/<int:leave_id>/', views.reject_leave_action, name='reject_leave_action'),
     path('dashboard/hr/leave-requests/', views.hr_leave_requests_list, name='hr_leave_requests'),

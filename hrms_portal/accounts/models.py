@@ -1,7 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.conf import settings
-from datetime import datetime
+
 
 class User(AbstractUser):
     """Custom User Model that extends base corporate security credentials."""
@@ -29,10 +29,16 @@ class EmployeeProfile(models.Model):
     designation = models.CharField(max_length=100)
     joining_date = models.DateField(auto_now_add=True)
     salary = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
-    avatar = models.ImageField(upload_to='avatars/',blank=True, null=True)
+    avatar = models.ImageField(upload_to='avatars/', blank=True, null=True)
+
+    # Added Leave Quota Balances
+    sick_leave_balance = models.IntegerField(default=15)
+    personal_leave_balance = models.IntegerField(default=10)
+    casual_leave_balance = models.IntegerField(default=12)
 
     def __str__(self):
         return f"{self.user.username} - {self.employee_id}"
+
 
 class Attendance(models.Model):
     """Tracks daily shift log timings, session lifetimes, and clock states."""
@@ -40,27 +46,17 @@ class Attendance(models.Model):
     date = models.DateField(auto_now_add=True)
     punch_in = models.DateTimeField(null=True, blank=True)
     punch_out = models.DateTimeField(null=True, blank=True)
-    
+
     class Meta:
         ordering = ['-date']
-        unique_together = ['user', 'date'] # One structural registry entry block per person per day
+        unique_together = ['user', 'date']
 
     def __str__(self):
         return f"{self.user.username} - {self.date}"
 
     @property
     def total_working_hours(self):
-        """Computes the exact duration metric profile output for a processed shift."""
-        if self.punch_in and self.punch_out:
-            duration = self.punch_out - self.punch_in
-            total_seconds = duration.total_seconds()
-            hours = int(total_seconds // 3600)
-            minutes = int((total_seconds % 3600) // 60)
-            return f"{hours}h {minutes}m"
-        return "Active Shift/Incomplete"
-
-    @property
-    def total_working_hours(self):
+        """Computes the exact duration metric output for a processed shift."""
         if self.punch_in and self.punch_out:
             duration = self.punch_out - self.punch_in
             total_seconds = int(duration.total_seconds())
@@ -70,6 +66,35 @@ class Attendance(models.Model):
         elif self.punch_in:
             return "Session Active"
         return "Incomplete Shift"
+
+
+class LeaveRequest(models.Model):
+    """Stores employee time-off applications and approval statuses."""
+    LEAVE_TYPES = (
+        ('SL', 'Sick Leave'),
+        ('PL', 'Personal Leave'),
+        ('CL', 'Casual Leave'),
+    )
+    STATUS_CHOICES = (
+        ('Pending', 'Pending'),
+        ('Approved', 'Approved'),
+        ('Rejected', 'Rejected'),
+    )
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='leave_requests')
+    leave_type = models.CharField(max_length=2, choices=LEAVE_TYPES, default='CL')
+    start_date = models.DateField()
+    end_date = models.DateField()
+    reason = models.TextField()
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='Pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.user.username} - {self.get_leave_type_display()} ({self.status})"
+
 
 class Announcement(models.Model):
     """Model for HR company-wide notices and broadcast messages."""

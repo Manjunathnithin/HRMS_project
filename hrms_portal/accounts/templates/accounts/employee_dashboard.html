@@ -168,7 +168,7 @@
 </div>
 
 <!-- INTERACTIVE MONTHLY ATTENDANCE CALENDAR -->
-<div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 mb-8">
+<div id="attendance-calendar" class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 mb-8">
     <!-- Calendar Header with Month Controls -->
     <div class="flex items-center justify-between mb-6">
         <div>
@@ -180,12 +180,16 @@
         </div>
 
         <div class="flex items-center gap-3">
-            <a href="?month={{ prev_month }}&year={{ prev_year }}"
+            <!-- Previous Month Link -->
+            <a href="?month={{ prev_month }}&year={{ prev_year }}#attendance-calendar"
                 class="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-all">
                 <i class="fa-solid fa-chevron-left text-xs"></i>
             </a>
+
             <span class="text-sm font-bold text-slate-800 font-mono">{{ month_name }} {{ current_year }}</span>
-            <a href="?month={{ next_month }}&year={{ next_year }}"
+
+            <!-- Next Month Link -->
+            <a href="?month={{ next_month }}&year={{ next_year }}#attendance-calendar"
                 class="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-all">
                 <i class="fa-solid fa-chevron-right text-xs"></i>
             </a>
@@ -344,4 +348,5 @@
         </table>
     </div>
 </div>
+
 {% endblock %}

@@ -323,50 +323,51 @@ def leave_history(request):
 
 @login_required
 def approve_leave_action(request, leave_id):
-    """Validates parameters, updates leave status to Approved, and deducts leave balance."""
-    if not request.user.is_hr:
-        messages.error(request, "Access Denied. HR administrative credentials required.")
-        return redirect('dashboard_home')
+    """Approves a pending leave request and automatically deducts days from the employee's profile balance."""
+    leave_request = get_object_or_404(LeaveRequest, id=leave_id)
+    
+    if leave_request.status == 'Pending':
+        # 1. Calculate requested leave duration (inclusive of start and end dates)
+        requested_days = (leave_request.end_date - leave_request.start_date).days + 1
         
-    leave = get_object_or_404(LeaveRequest, id=leave_id)
-    if leave.status == 'Pending':
-        leave.status = 'Approved'
-        leave.save()
+        # 2. Fetch employee profile
+        profile = getattr(leave_request.user, 'profile', None)
         
-        # Calculate requested leave duration (in days)
-        leave_days = (leave.end_date - leave.start_date).days + 1
-        if leave_days < 1:
-            leave_days = 1
-
-        # Fetch employee profile
-        profile = getattr(leave.user, 'profile', None)
         if profile:
-            leave_type_str = str(leave.leave_type).lower()
-            if 'sick' in leave_type_str:
-                profile.sick_leave_balance = max(0, getattr(profile, 'sick_leave_balance', 15) - leave_days)
-            elif 'personal' in leave_type_str:
-                profile.personal_leave_balance = max(0, getattr(profile, 'personal_leave_balance', 10) - leave_days)
-            else:  # Casual Leave default
-                profile.casual_leave_balance = max(0, getattr(profile, 'casual_leave_balance', 12) - leave_days)
+            leave_type = leave_request.leave_type.upper() if leave_request.leave_type else 'CASUAL'
+            
+            # Deduct from the matching leave category
+            if 'SICK' in leave_type or leave_type == 'SL':
+                profile.sick_leave_balance = max(0, profile.sick_leave_balance - requested_days)
+            elif 'PERSONAL' in leave_type or leave_type == 'PL':
+                profile.personal_leave_balance = max(0, profile.personal_leave_balance - requested_days)
+            else:  # Default to Casual Leave (CL)
+                profile.casual_leave_balance = max(0, profile.casual_leave_balance - requested_days)
+                
             profile.save()
 
-        messages.success(request, f"Leave request for {leave.user.username} approved ({leave_days} days deducted).")
-    return redirect(request.META.get('HTTP_REFERER', 'hr_dashboard'))
+        # 3. Mark request as Approved
+        leave_request.status = 'Approved'
+        leave_request.save()
+        messages.success(request, f"Leave request for {leave_request.user.username} approved successfully ({requested_days} day(s) deducted).")
+    else:
+        messages.info(request, "This leave request has already been processed.")
+
+    return redirect('hr_dashboard')
 
 @login_required
 def reject_leave_action(request, leave_id):
-    """Validates parameters and updates leave status to Rejected."""
-    if not request.user.is_hr:
-        messages.error(request, "Access Denied. HR administrative credentials required.")
-        return redirect('dashboard_home')
-        
-    leave = get_object_or_404(LeaveRequest, id=leave_id)
-    if leave.status == 'Pending':
-        leave.status = 'Rejected'
-        leave.save()
-        messages.warning(request, f"Leave application request for {leave.user.username} rejected.")
-    return redirect(request.META.get('HTTP_REFERER', 'hr_dashboard'))
+    """Rejects a pending leave request without deducting any quota."""
+    leave_request = get_object_or_404(LeaveRequest, id=leave_id)
+    
+    if leave_request.status == 'Pending':
+        leave_request.status = 'Rejected'
+        leave_request.save()
+        messages.warning(request, f"Leave request for {leave_request.user.username} has been rejected.")
+    else:
+        messages.info(request, "This leave request has already been processed.")
 
+    return redirect('hr_dashboard')
 
 # ==============================================================================
 # 6. STAFF DIRECTORY MANAGEMENT CONSOLE (MANUAL EMPLOYEE ID ASSIGNMENT)
